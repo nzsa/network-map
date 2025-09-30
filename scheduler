@@ -1,0 +1,45 @@
+.github/workflows/deploy.yml
+name: Build & Deploy Network Map
+
+on:
+  schedule:
+    - cron: "0 13 * * *"   # 02:00 NZDT (UTC+13)
+    - cron: "0 14 * * *"   # 02:00 NZST (UTC+12)
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run script (outputs the two files)
+        run: |
+          python script.py
+
+      - name: Prepare deploy directory
+        run: |
+          mkdir -p public
+          cp network_map.html "public/network_map.html"
+          cp "NZX Directors.csv" "public/NZX Directors.csv"
+
+      # Option A: FTP (works with cPanel hosts)
+      - name: FTP Deploy
+        uses: SamKirkland/FTP-Deploy-Action@v4
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASS }}
+          local-dir: public/
+          server-dir: /public_html/wp-content/uploads/network-map/
