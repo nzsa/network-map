@@ -1,3 +1,12 @@
+# executivescraper.py
+# Outputs:
+#   - network_map.html
+#   - NZX Directors.csv
+#
+# These two files are written to the SAME folder as this script (repo root)
+# so a deploy job can upload them to your website (e.g. /wp-content/uploads/network-map/).
+# The HTML includes a Download button linking to "NZX Directors.csv" (relative URL).
+
 from bs4 import BeautifulSoup
 import requests
 import fyahooImporter as fi
@@ -5,227 +14,93 @@ import time
 import pandas as pd
 import random
 from pyvis.network import Network
-import webbrowser
 import colorsys
-from flask import Flask, send_file
-
 import os
 from pathlib import Path
 
-DIRECTOR_DATA_PATH = r'C:\Users\Oliver\NZSA\CS - Companies\Directors\NZX Directors.csv'
+# ---------- CONFIG ----------
+# Output directory = folder containing this script (repo root)
+OUTPUT_DIR = Path(__file__).parent.resolve()
+CSV_PATH = OUTPUT_DIR / "NZX Directors.csv"          # final CSV name (stable)
+HTML_PATH = OUTPUT_DIR / "network_map.html"          # final HTML name (stable)
+
+# If you keep this True locally, the script opens your browser.
+# On GitHub Actions, this is automatically suppressed.
+OPEN_BROWSER_LOCALLY = True
 
 NAME_MAP = {
     # A
-    "Al": "Albert",
-    "Alex": "Alexander",
-    "Allie": "Alice",
-    "Andy": "Andrew",
-    "Archie": "Archibald",
-    "Art": "Arthur",
-    
+    "Al": "Albert", "Alex": "Alexander", "Allie": "Alice", "Andy": "Andrew",
+    "Archie": "Archibald", "Art": "Arthur",
     # B
-    "Barb": "Barbara",
-    "Bess": "Elizabeth",
-    "Betsy": "Elizabeth",
-    "Betty": "Elizabeth",
-    "Ben": "Benjamin",
-    "Benny": "Benjamin",
-    "Bill": "William",
-    "Billy": "William",
-    "Bob": "Robert",
-    "Bobby": "Robert",
-    "Brad": "Bradley",
-    "Brent": "Brenton",
+    "Barb": "Barbara", "Bess": "Elizabeth", "Betsy": "Elizabeth", "Betty": "Elizabeth",
+    "Ben": "Benjamin", "Benny": "Benjamin", "Bill": "William", "Billy": "William",
+    "Bob": "Robert", "Bobby": "Robert", "Brad": "Bradley", "Brent": "Brenton",
     "Bryce": "Brycen",
-    
     # C
-    "Cal": "Calvin",
-    "Cam": "Cameron",
-    "Carrie": "Caroline",
-    "Charlie": "Charles",
-    "Chuck": "Charles",
-    "Chris": "Christopher",
-    "Cindy": "Cynthia",
-    "Cliff": "Clifford",
-    "Connie": "Constance",
-    "Court": "Courtney",
-    
+    "Cal": "Calvin", "Cam": "Cameron", "Carrie": "Caroline", "Charlie": "Charles",
+    "Chuck": "Charles", "Chris": "Christopher", "Cindy": "Cynthia", "Cliff": "Clifford",
+    "Connie": "Constance", "Court": "Courtney",
     # D
-    "Dan": "Daniel",
-    "Danny": "Daniel",
-    "Dave": "David",
-    "Deb": "Deborah",
-    "Debbie": "Deborah",
-    "Del": "Delbert",
-    "Drew": "Andrew",
-    "Don": "Donald",
-    "Donna": "Donatella",
-    "Doug": "Douglas",
-    "Dot": "Dorothy",
-    "Dottie": "Dorothy",
-    
+    "Dan": "Daniel", "Danny": "Daniel", "Dave": "David", "Deb": "Deborah",
+    "Debbie": "Deborah", "Del": "Delbert", "Drew": "Andrew", "Don": "Donald",
+    "Donna": "Donatella", "Doug": "Douglas", "Dot": "Dorothy", "Dottie": "Dorothy",
     # E
-    "Ed": "Edward",
-    "Eddie": "Edward",
-    "Ellie": "Eleanor",
-    "Elly": "Elizabeth",
-    "Elsie": "Elizabeth",
-    "Ernie": "Ernest",
-    
+    "Ed": "Edward", "Eddie": "Edward", "Ellie": "Eleanor", "Elly": "Elizabeth",
+    "Elsie": "Elizabeth", "Ernie": "Ernest",
     # F
-    "Frank": "Francis",
-    "Frankie": "Francis",
-    "Fran": "Frances",
-    "Fred": "Frederick",
-    "Freddy": "Frederick",
-    
+    "Frank": "Francis", "Frankie": "Francis", "Fran": "Frances",
+    "Fred": "Frederick", "Freddy": "Frederick",
     # G
-    "Gabe": "Gabriel",
-    "Gary": "Garrett",
-    "Gerry": "Gerald",
-    "Greg": "Gregory",
+    "Gabe": "Gabriel", "Gary": "Garrett", "Gerry": "Gerald", "Greg": "Gregory",
     "Gus": "Augustus",
-    
     # H
-    "Hal": "Harold",
-    "Hank": "Henry",
-    "Harry": "Harold",
-    "Hattie": "Harriet",
-    "Hettie": "Henrietta",
-    "Hazel": "Hazelene",
-    "Izzy": "Isabella",
-    
+    "Hal": "Harold", "Hank": "Henry", "Harry": "Harold", "Hattie": "Harriet",
+    "Hettie": "Henrietta", "Hazel": "Hazelene", "Izzy": "Isabella",
     # J
-    "Jack": "Jackson",
-    "Jake": "Jacob",
-    "Jamie": "James",
-    "Jan": "Janet",
-    "Jenny": "Jennifer",
-    "Jess": "Jessica",
-    "Jim": "James",
-    "Jimmy": "James",
-    "Jo": "Joanna",
-    "Joe": "Joseph",
-    "Joey": "Joseph",
-    "Johnny": "John",
-    "Josh": "Joshua",
-    "Jules": "Julian",
-    
+    "Jack": "Jackson", "Jake": "Jacob", "Jamie": "James", "Jan": "Janet",
+    "Jenny": "Jennifer", "Jess": "Jessica", "Jim": "James", "Jimmy": "James",
+    "Jo": "Joanna", "Joe": "Joseph", "Joey": "Joseph", "Johnny": "John",
+    "Josh": "Joshua", "Jules": "Julian",
     # K
-    "Kate": "Katherine",
-    "Katie": "Katherine",
-    "Kathy": "Katherine",
-    "Ken": "Kenneth",
-    "Kenny": "Kenneth",
-    "Kim": "Kimberly",
-    "Kris": "Kristopher",
-    
+    "Kate": "Katherine", "Katie": "Katherine", "Kathy": "Katherine",
+    "Ken": "Kenneth", "Kenny": "Kenneth", "Kim": "Kimberly", "Kris": "Kristopher",
     # L
-    "Larry": "Lawrence",
-    "Laurie": "Lawrence",
-    "Leo": "Leonard",
-    "Liz": "Elizabeth",
-    "Lizzy": "Elizabeth",
-    "Liza": "Elizabeth",
-    "Lois": "Louisa",
-    "Lou": "Louis",
-    "Lori": "Loretta",
-    "Lynn": "Lynette",
-    
+    "Larry": "Lawrence", "Laurie": "Lawrence", "Leo": "Leonard", "Liz": "Elizabeth",
+    "Lizzy": "Elizabeth", "Liza": "Elizabeth", "Lois": "Louisa", "Lou": "Louis",
+    "Lori": "Loretta", "Lynn": "Lynette",
     # M
-    "Maddie": "Madeline",
-    "Maggie": "Margaret",
-    "Maisie": "Margaret",
-    "Mandy": "Amanda",
-    "Matt": "Matthew",
-    "Matty": "Matthew",
-    "Meg": "Margaret",
-    "Megan": "Margaret",
-    "Mike": "Michael",
-    "Mikey": "Michael",
-    "Mitch": "Mitchell",
-    "Molly": "Mary",
-    "Monty": "Montgomery",
-    
+    "Maddie": "Madeline", "Maggie": "Margaret", "Maisie": "Margaret",
+    "Mandy": "Amanda", "Matt": "Matthew", "Matty": "Matthew", "Meg": "Margaret",
+    "Megan": "Margaret", "Mike": "Michael", "Mikey": "Michael", "Mitch": "Mitchell",
+    "Molly": "Mary", "Monty": "Montgomery",
     # N
-    "Nate": "Nathan",
-    "Ned": "Edward",
-    "Nick": "Nicholas",
-    "Nicky": "Nicholas",
-    "Nell": "Eleanor",
-    "Nora": "Eleanor",
-    
+    "Nate": "Nathan", "Ned": "Edward", "Nick": "Nicholas", "Nicky": "Nicholas",
+    "Nell": "Eleanor", "Nora": "Eleanor",
     # O
-    "Oli": "Oliver",
-    "Ollie": "Oliver",
-    "Orie": "Orville",
-    "Ozzie": "Oswald",
-    
+    "Oli": "Oliver", "Ollie": "Oliver", "Orie": "Orville", "Ozzie": "Oswald",
     # P
-    "Pat": "Patrick",
-    "Paddy": "Patrick",
-    "Patty": "Patricia",
-    "Peg": "Margaret",
-    "Peggy": "Margaret",
-    "Phil": "Philip",
-    "Philippa": "Philippa",
-    "Pip": "Philippa",
-    "Polly": "Mary",
-    "Prue": "Prudence",
-    
+    "Pat": "Patrick", "Paddy": "Patrick", "Patty": "Patricia", "Peg": "Margaret",
+    "Peggy": "Margaret", "Phil": "Philip", "Philippa": "Philippa", "Pip": "Philippa",
+    "Polly": "Mary", "Prue": "Prudence",
     # R
-    "Ray": "Raymond",
-    "Rich": "Richard",
-    "Richie": "Richard",
-    "Rick": "Richard",
-    "Ricky": "Richard",
-    "Rob": "Robert",
-    "Robbie": "Robert",
-    "Ron": "Ronald",
-    "Ronnie": "Ronald",
-    "Rosie": "Rose",
-    "Ruthie": "Ruth",
-    
+    "Ray": "Raymond", "Rich": "Richard", "Richie": "Richard", "Rick": "Richard",
+    "Ricky": "Richard", "Rob": "Robert", "Robbie": "Robert", "Ron": "Ronald",
+    "Ronnie": "Ronald", "Rosie": "Rose", "Ruthie": "Ruth",
     # S
-    "Sam": "Samuel",
-    "Sammy": "Samuel",
-    "Sandy": "Sandra",
-    "Sasha": "Alexander",
-    "Scottie": "Scott",
-    "Shelly": "Michelle",
-    "Steph": "Stephanie",
-    "Steve": "Steven",
-    "Stevie": "Steven",
-    "Sue": "Susan",
-    "Susie": "Susan",
-    
+    "Sam": "Samuel", "Sammy": "Samuel", "Sandy": "Sandra", "Sasha": "Alexander",
+    "Scottie": "Scott", "Shelly": "Michelle", "Steph": "Stephanie",
+    "Steve": "Steven", "Stevie": "Steven", "Sue": "Susan", "Susie": "Susan",
     # T
-    "Ted": "Theodore",
-    "Teddy": "Theodore",
-    "Terri": "Teresa",
-    "Tess": "Theresa",
-    "Tim": "Timothy",
-    "Tom": "Thomas",
-    "Tommy": "Thomas",
-    "Tony": "Anthony",
-    "Trish": "Patricia",
-    "Trudy": "Gertrude",
-    
+    "Ted": "Theodore", "Teddy": "Theodore", "Terri": "Teresa", "Tess": "Theresa",
+    "Tim": "Timothy", "Tom": "Thomas", "Tommy": "Thomas", "Tony": "Anthony",
+    "Trish": "Patricia", "Trudy": "Gertrude",
     # V
-    "Val": "Valerie",
-    "Vic": "Victor",
-    "Vicky": "Victoria",
-    
+    "Val": "Valerie", "Vic": "Victor", "Vicky": "Victoria",
     # W
-    "Walt": "Walter",
-    "Will": "William",
-    "Willie": "William",
-    "Winnie": "Winifred",
-    
+    "Walt": "Walter", "Will": "William", "Willie": "William", "Winnie": "Winifred",
     # Z
-    "Zach": "Zachary",
-    "Zack": "Zachary",
-    "Zeke": "Ezekiel"
+    "Zach": "Zachary", "Zack": "Zachary", "Zeke": "Ezekiel"
 }
 
 css_style = """body, html {
@@ -259,40 +134,34 @@ css_style = """body, html {
             background-color: #217a00;
           }"""
 
-app = Flask(__name__)
+# ---------- HELPERS ----------
 
 def generate_color_map(items):
-    """Return random colours for each node"""
+    """Return random colours for each company label / edge group."""
     colourDict = {}
     for item in items:
-        # Normalize HSV values to 0.0–1.0 range
-
         h_norm = random.randint(0, 360) / 360.0
         s_norm = random.randint(50, 100) / 100.0
         v_norm = random.randint(50, 100) / 100.0
-
-        # Convert to RGB (returns floats in 0.0–1.0)
         r, g, b = colorsys.hsv_to_rgb(h_norm, s_norm, v_norm)
-
-        # Convert to 0–255 and format as hex
         colourDict[item] = '#{:02x}{:02x}{:02x}'.format(int(r * 255), int(g * 255), int(b * 255))
-
     return colourDict
 
-def createNetwork(df, csv_path):
+def create_network_html(df, html_path: Path):
+    """Build the PyVis network and write to html_path."""
     net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white", notebook=False)
 
-    # Add nodes with labels for each person
+    # People nodes
     for person in df.index:
         net.add_node(person, label=person, group='people')
 
-    #Add invisible nodes with labels for each company
+    # Invisible company label nodes
     for company in df.columns:
         net.add_node(company, label=company, group='company', color='rgba(0,0,0,0)')
 
     companyColours = generate_color_map(df.columns.values)
 
-    #Create a line between people
+    # Edges between people who share a company; invisible edges from company label to members
     for company in df.columns:
         members = df.loc[df[company]].index.tolist()
         for i in range(len(members)):
@@ -304,25 +173,19 @@ def createNetwork(df, csv_path):
                     color=companyColours.get(company, '#CCCCCC'),
                     length=100
                 )
-            #Connect the company label to each company
             net.add_edge(
-                    company,
-                    members[i],
-                    title=company,
-                    color='rgba(0,0,0,0)',
-                    length=5
-                )
+                company,
+                members[i],
+                title=company,
+                color='rgba(0,0,0,0)',
+                length=5
+            )
 
-    #Make the company labels large and turn on physics
     net.set_options("""
     {
         "groups": {
             "company": {
-                "font": {
-                    "size": 52,
-                    "bold": true,
-                    "color": "white"
-                },
+                "font": {"size": 52, "bold": true, "color": "white"},
                 "color": "rgba(0,0,0,0)"
             }
         },
@@ -336,104 +199,96 @@ def createNetwork(df, csv_path):
                 "damping": 0.4,
                 "avoidOverlap": 0
             },
-            "stabilization": {
-                "iterations": 200
-            }
+            "stabilization": {"iterations": 200}
         }
     }""")
-    # Save next to CSV
-    out_dir = Path(csv_path).parent
-    html_path = out_dir / "network_map.html"
-    net.write_html(str(html_path))
-    return str(html_path)  # absolute path (because out_dir is absolute from DIRECTOR_DATA_PATH)
 
-def scrapeNZX(tickerStrs):
+    net.write_html(str(html_path))
+
+def scrape_nzx_directors(tickerStrs):
     directorList = []
     companyNum = 1
+    headers = {"User-Agent": "Mozilla/5.0"}  # Be a bit polite
     for ticker in tickerStrs:
         print(f"\n{ticker}: {companyNum}/{len(tickerStrs)}")
         companyNum += 1
         url = "https://www.nzx.com/companies/" + ticker[:3]
         time.sleep(random.uniform(1, 3))
         try:
-            response = requests.get(url)
+            response = requests.get(url, headers=headers, timeout=20)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
 
-            # Example: Find elements containing director names (this will vary greatly by website)
-            director_names = soup.find_all('div', class_='Grid jfsytL grid-lg-2-3')
-            for name_element in director_names:
-                #Need to place a known text in between the name and title, to split on
-                string = str(name_element)
-                string = string.replace("</strong><span>", "</strong>$<span>")
-                name_element = BeautifulSoup(string, 'html.parser')
-                string = name_element.text
-                #Only grab Directors/Chairs
-                if 'Director' in string or 'Chair' in string:
-                    #Get the name and position on either side of the 'known string'
-                    name, position = string.split('$')
-                    #Only take the first and last names and lengthen any short names
-                    nameList = name.split(' ')
-                    if nameList[0] in NAME_MAP:
-                        nameList[0] = NAME_MAP[nameList[0]]
+            blocks = soup.find_all('div', class_='Grid jfsytL grid-lg-2-3')
+            for block in blocks:
+                # Insert $ marker between name and title to split reliably
+                string = str(block).replace("</strong><span>", "</strong>$<span>")
+                parsed = BeautifulSoup(string, 'html.parser')
+                text = parsed.text
 
-                    name = nameList[0] + " " + nameList[-1]
-                    print(f"{name}: {position}")
-                    directorList.append(pd.DataFrame({'Company': [ticker], 'Name': [name], 'Title': [position]}))
+                if ('Director' in text) or ('Chair' in text):
+                    if '$' not in text:
+                        continue  # skip unexpected shapes
+                    name, position = text.split('$', 1)
+                    parts = name.split()
+                    if parts:
+                        if parts[0] in NAME_MAP:
+                            parts[0] = NAME_MAP[parts[0]]
+                        # Use first + last
+                        name = f"{parts[0]} {parts[-1]}"
+                        print(f"{name}: {position.strip()}")
+                        directorList.append(pd.DataFrame({'Company': [ticker], 'Name': [name], 'Title': [position.strip()]}))
 
         except requests.exceptions.RequestException as e:
             print(f"Error during web scraping: {e}")
         except Exception as e:
             print(f"Error parsing HTML: {e}")
-    
     return directorList
 
-def getTickers(exchange):
-    #PNK = OTC1, OQX=OTC2 (Established), OQB=OTC3 (Venture), NZE = NZX, ASX = ASX
+def get_tickers(exchange):
+    # PNK = OTC1, OQX=OTC2 (Established), OQB=OTC3 (Venture), NZE = NZX, ASX = ASX
     dfStocks = fi.getAllStocks(exchange)
     dfStocks['Length'] = [len(tick) for tick in dfStocks['symbol']]
-    dfStocks = dfStocks.loc[dfStocks['Length']==6] # Use only for NZ market, maybe ASX? otherwise it gets all the bonds
-    tickerStrs = list(dfStocks['symbol'])
-    return tickerStrs
+    # NZX tickers typically length 6; this filters out bonds, etc.
+    dfStocks = dfStocks.loc[dfStocks['Length'] == 6]
+    return list(dfStocks['symbol'])
 
-def countConnections(networkDf):
+def count_connections(networkDf):
     connectionDict = {}
     for name in networkDf.index:
         relatedCompaniesDf = networkDf.loc[:, networkDf.loc[name] == True]
-        connectionDict[name] = relatedCompaniesDf.any(axis=1).sum()-1
-    top5ConnectionDict = dict(sorted(connectionDict.items(), key=lambda item: item[1], reverse=True)[:5])
-    return top5ConnectionDict
+        connectionDict[name] = relatedCompaniesDf.any(axis=1).sum() - 1
+    top5 = dict(sorted(connectionDict.items(), key=lambda item: item[1], reverse=True)[:5])
+    return top5
 
-def countIsolatedCompanies(df):
-    isolatedCount = 0
+def count_isolated_companies(df):
+    isolated = 0
     for company in df.columns:
-        companyDirectorsDf = df.loc[df[company]==True]
-        companyDirectorsDf = companyDirectorsDf.drop(company, axis=1)
+        companyDirectorsDf = df.loc[df[company] == True]
+        # If no director shares any other company, treat as isolated
+        companyDirectorsDf = companyDirectorsDf.drop(company, axis=1, errors='ignore')
         if companyDirectorsDf.values.any() == False:
-            isolatedCount += 1 
+            isolated += 1
+    return isolated
 
-    return isolatedCount
-
-
-
-def insertHTML(fileName, newContent, priorTag):
+def insert_css(fileName, new_css):
     with open(fileName, "r", encoding="utf-8") as f:
         soup = BeautifulSoup(f, "html.parser")
-
-    tag = soup.head.find(priorTag)
-
-    tag.string = tag.string + newContent
-
-    # Save the modified HTML
+    style_tag = soup.head.find("style")
+    if style_tag and style_tag.string:
+        style_tag.string = style_tag.string + new_css
+    else:
+        # create a <style> if missing
+        style = soup.new_tag("style")
+        style.string = new_css
+        soup.head.append(style)
     with open(fileName, "w", encoding="utf-8") as f:
         f.write(str(soup))
 
-
-def removeHTMLTags(fileName, removeTags, classes=None):
-    with open(fileName, 'r') as file:
+def remove_html_tags(fileName, removeTags, classes=None):
+    with open(fileName, 'r', encoding="utf-8") as file:
         soup = BeautifulSoup(file, 'html.parser')
-
-    if classes==None:
+    if classes is None:
         for removeTag in removeTags:
             for tag in soup.find_all(removeTag):
                 tag.decompose()
@@ -442,70 +297,65 @@ def removeHTMLTags(fileName, removeTags, classes=None):
             for removeClass in classes:
                 for tag in soup.find_all(removeTag, class_=removeClass):
                     tag.decompose()
-
-    # Save the cleaned HTML
-    with open(fileName, 'w') as file:
+    with open(fileName, 'w', encoding="utf-8") as file:
         file.write(str(soup))
 
-def insertHTMLTags(fileName, priorTag, afterClose, newTag, newContent=None, priorClass=None, newClass=None, newId=None, newHref=None):
-    # Load your HTML
+def insert_html_tag(fileName, priorTag, afterClose, newTag, newContent=None,
+                    priorClass=None, newClass=None, newId=None, newHref=None):
     with open(fileName, "r", encoding="utf-8") as f:
         soup = BeautifulSoup(f, "html.parser")
-
-    # Find the target div by class
-    target = soup.find(priorTag, class_=priorClass) if priorClass else None
+    target = soup.find(priorTag, class_=priorClass) if priorClass else soup.find(priorTag)
     if not target:
-        target = soup.find(priorTag)
-    
+        print("Target tag not found.")
+        with open(fileName, "w", encoding="utf-8") as f:
+            f.write(str(soup))
+        return
     newTagObj = soup.new_tag(newTag)
-    # Create the new tag
-    if newClass != None:
+    if newClass is not None:
         newTagObj['class'] = newClass
-    if newId != None:
+    if newId is not None:
         newTagObj['id'] = newId
-    if newContent != None:
-        newTagObj.string = newContent
-    if newHref != None:
+    if newHref is not None:
         newTagObj['href'] = newHref
-
-    # Insert it after the target div
-    if target and afterClose == 0:
+    if newContent is not None:
+        newTagObj.string = newContent
+    if afterClose == 0:
         target.insert(0, newTagObj)
-    elif target:
-        target.insert_after(newTagObj)
     else:
-        print("Target div not found.")
-
-    # Save the updated HTML
+        target.insert_after(newTagObj)
     with open(fileName, "w", encoding="utf-8") as f:
         f.write(str(soup))
 
-def dfToHTMLText(df, column1, column2):
-    
-    max_len = max(len(director) for director in df.index)
-    busyDirectorStrList = [f"{column1.ljust(max_len+1)} {column2}\n"]
-    for director, companyCount in df.items():
-        director = director+":"
-        busyDirectorStrList.append(f"{director.ljust(max_len+1)} {companyCount}\n")
-    return "".join(busyDirectorStrList)
+def df_to_pretty_text(series_or_df, column1, column2):
+    """Formats a Series like Name -> Count into aligned text block for the overlay."""
+    if isinstance(series_or_df, pd.Series):
+        idx_iter = series_or_df.index
+        vals = series_or_df
+    else:
+        idx_iter = series_or_df.index
+        vals = series_or_df.iloc[:, 0]
+    max_len = max(len(str(director)) for director in idx_iter) if len(idx_iter) else len(column1)
+    lines = [f"{column1.ljust(max_len+1)} {column2}\n"]
+    for director, count in vals.items():
+        label = f"{director}:"
+        lines.append(f"{label.ljust(max_len+1)} {count}\n")
+    return "".join(lines)
 
-@app.route("/"+DIRECTOR_DATA_PATH)
-def download_csv():
-    csv_path = DIRECTOR_DATA_PATH
-
-    # Send file to browser
-    return send_file(csv_path, mimetype="text/csv", as_attachment=True, download_name="NZX Directors.csv")
+# ---------- MAIN ----------
 
 def main():
-    tickerStrs = getTickers('NZE')
-    directorList = scrapeNZX(tickerStrs)
-    directorDf = pd.concat(directorList)
-    
-    numPositions = directorDf.shape[0]
-    busiestDirectorsDf = directorDf.groupby('Name').count().sort_values('Company', ascending=False).head(5)['Company']
+    tickers = get_tickers('NZE')
+    directorList = scrape_nzx_directors(tickers)
+    if not directorList:
+        raise RuntimeError("No director data scraped; cannot build network.")
 
+    directorDf = pd.concat(directorList, ignore_index=True)
+
+    numPositions = directorDf.shape[0]
+    busiestDirectors = directorDf.groupby('Name').count().sort_values('Company', ascending=False).head(5)['Company']
+
+    # Build boolean matrix: rows = director names, cols = companies, True if holds position
     directorDf = directorDf.set_index('Name')
-    # Create a boolean matrix: rows are names, columns are tickers
     directorNetwork = directorDf.assign(value=True).pivot_table(
         index='Name',
         columns='Company',
@@ -515,26 +365,47 @@ def main():
     )
     numUniqueDirectors = directorNetwork.shape[0]
 
-    print(busiestDirectorsDf)
-    busiestDirectorsHTML = dfToHTMLText(busiestDirectorsDf, "Name", "# Companies")
-    mostConnectedDict = countConnections(directorNetwork)
-    mostConnectedHTML = dfToHTMLText(pd.Series(mostConnectedDict), "Name", "# Connections")
-    isolatedCompanies = countIsolatedCompanies(directorNetwork)
+    print(busiestDirectors)
+    busiestHTML = df_to_pretty_text(busiestDirectors, "Name", "# Companies")
+    mostConnected = count_connections(directorNetwork)
+    mostConnectedHTML = df_to_pretty_text(pd.Series(mostConnected), "Name", "# Connections")
+    isolatedCompanies = count_isolated_companies(directorNetwork)
 
-    allInfoText = '# Positions: ' + str(numPositions) + '\n\n' + '# Unique Directors: ' + str(numUniqueDirectors) + '\n\n' + '# Isolated Companies: ' + str(isolatedCompanies) + '\n\n' +busiestDirectorsHTML + '\n\n' + mostConnectedHTML
+    overlayText = (
+        '# Positions: ' + str(numPositions) + '\n\n' +
+        '# Unique Directors: ' + str(numUniqueDirectors) + '\n\n' +
+        '# Isolated Companies: ' + str(isolatedCompanies) + '\n\n' +
+        busiestHTML + '\n\n' + mostConnectedHTML
+    )
 
-    #directorNetwork.to_csv('C:\\Users\\Oliver\\NZSA\\CS - Companies\\Directors\\NZX Director Network.csv')
-    directorDf.to_csv(DIRECTOR_DATA_PATH)
+    # 1) Write CSV to repo root
+    directorDf.to_csv(CSV_PATH, encoding="utf-8")
 
-    fileNameHTML = createNetwork(directorNetwork, DIRECTOR_DATA_PATH)
-    removeHTMLTags(fileNameHTML, ['center', 'h1'])
-    insertHTML(fileNameHTML, css_style, "style")
-    removeHTMLTags(fileNameHTML, ['div'], ['card', 'card-body'])
-    insertHTMLTags(fileNameHTML, "body", 0,  "pre", allInfoText, newClass="info-text")
-    insertHTMLTags(fileNameHTML, "pre", 1, "a", newHref='/'+DIRECTOR_DATA_PATH, priorClass="info-text")
-    insertHTMLTags(fileNameHTML, "a", 0, "button", "Download Data", newClass="top-right-button")
-    insertHTMLTags(fileNameHTML, "a", 1, "div", priorClass="top-right-button", newId='mynetwork')
-    # Open automatically in browser and print where it went
-    webbrowser.open("file://" + os.path.abspath(fileNameHTML).replace("\\", "/"))
+    # 2) Build HTML to repo root
+    create_network_html(directorNetwork, HTML_PATH)
 
-main()
+    # 3) Clean + inject custom CSS and overlay
+    remove_html_tags(str(HTML_PATH), ['center', 'h1'])
+    insert_css(str(HTML_PATH), css_style)
+    remove_html_tags(str(HTML_PATH), ['div'], ['card', 'card-body'])
+    insert_html_tag(str(HTML_PATH), "body", 0, "pre", overlayText, newClass="info-text")
+
+    # 4) Insert a Download button that links RELATIVELY to the CSV (works on your website)
+    csv_file_url = "NZX Directors.csv"  # relative to the HTML file location on the server
+    insert_html_tag(str(HTML_PATH), "pre", 1, "a", newHref=csv_file_url, priorClass="info-text")
+    insert_html_tag(str(HTML_PATH), "a", 0, "button", "Download Data", newClass="top-right-button")
+    insert_html_tag(str(HTML_PATH), "a", 1, "div", priorClass="top-right-button", newId='mynetwork')
+
+    print(f"✅ Wrote CSV:  {CSV_PATH}")
+    print(f"✅ Wrote HTML: {HTML_PATH}")
+
+    # Open locally, but skip on GitHub Actions
+    if OPEN_BROWSER_LOCALLY and os.environ.get("GITHUB_ACTIONS", "").lower() != "true":
+        try:
+            import webbrowser
+            webbrowser.open(HTML_PATH.as_uri())
+        except Exception as e:
+            print(f"(Info) Could not open browser automatically: {e}")
+
+if __name__ == "__main__":
+    main()
