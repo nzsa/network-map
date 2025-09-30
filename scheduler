@@ -26,7 +26,7 @@ jobs:
 
       - name: Run script (outputs the two files)
         run: |
-          python script.py
+          executiveScraper.py
 
       - name: Prepare deploy directory
         run: |
