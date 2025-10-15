@@ -27,8 +27,8 @@ jobs:
           username: ${{ secrets.LIGHTSAIL_USER }}
           key:      ${{ secrets.LIGHTSAIL_SSH_KEY }}
           script: |
-            sudo mkdir -p /opt/bitnami/wordpress/wp-content/uploads/network-map
             sudo chown -R $USER:daemon /opt/bitnami/wordpress/wp-content/uploads/network-map
+            sudo chmod -R 775 /opt/bitnami/wordpress/wp-content/uploads/network-map
 
       # Upload the HTML file
       - name: SFTP upload HTML
@@ -40,7 +40,6 @@ jobs:
           ssh_private_key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           local_path:  "network_map.html"
           remote_path: "/opt/bitnami/wordpress/wp-content/uploads/network-map/"
-          sftp_only:   true
 
       # Upload the CSV file
       - name: SFTP upload CSV
@@ -52,4 +51,3 @@ jobs:
           ssh_private_key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           local_path:  "NZX Directors.csv"
           remote_path: "/opt/bitnami/wordpress/wp-content/uploads/network-map/"
-          sftp_only:   true
