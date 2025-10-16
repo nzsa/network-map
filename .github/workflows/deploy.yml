@@ -15,6 +15,43 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+    # --- Generate the HTML + CSV via your Python script ---
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies (if any)
+        run: |
+          if [ -f requirements.txt ]; then
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+          else
+            echo "No requirements.txt found; skipping pip install"
+          fi
+
+      - name: Run executiveScraper.py
+        env:
+          # If your script needs API keys or creds, add them here as env vars:
+          # SOME_API_KEY: ${{ secrets.SOME_API_KEY }}
+          # LOGIN_USER:   ${{ secrets.LOGIN_USER }}
+          # LOGIN_PASS:   ${{ secrets.LOGIN_PASS }}
+          TZ: Pacific/Auckland
+        run: |
+          python executiveScraper.py
+          ls -l
+
+      # Optional: keep a copy of the generated files as a run artifact (handy for debugging)
+      - name: Upload artifact (generated files)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-network-map
+          path: |
+            network_map.html
+            NZX Directors.csv
+          if-no-files-found: error
+
       - name: Add host key
         run: |
           mkdir -p ~/.ssh
