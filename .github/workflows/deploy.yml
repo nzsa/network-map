@@ -49,7 +49,7 @@ jobs:
           name: generated-network-map
           path: |
             network_map.html
-            NZX Directors.csv
+            NZX_Directors.csv
           if-no-files-found: error
 
       - name: Add host key
@@ -86,5 +86,5 @@ jobs:
           port:     22
           username: ${{ secrets.LIGHTSAIL_USER }}
           ssh_private_key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          local_path:  "NZX Directors.csv"
+          local_path:  "NZX_Directors.csv"
           remote_path: "/opt/bitnami/wordpress/wp-content/uploads/network-map/"
