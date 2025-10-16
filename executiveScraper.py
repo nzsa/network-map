@@ -1,11 +1,11 @@
 # executivescraper.py
 # Outputs:
 #   - network_map.html
-#   - NZX Directors.csv
+#   - NZX_Directors.csv
 #
 # These two files are written to the SAME folder as this script (repo root)
 # so a deploy job can upload them to your website (e.g. /wp-content/uploads/network-map/).
-# The HTML includes a Download button linking to "NZX Directors.csv" (relative URL).
+# The HTML includes a Download button linking to "NZX_Directors.csv" (relative URL).
 
 from bs4 import BeautifulSoup
 import requests
@@ -21,7 +21,7 @@ from pathlib import Path
 # ---------- CONFIG ----------
 # Output directory = folder containing this script (repo root)
 OUTPUT_DIR = Path(__file__).parent.resolve()
-CSV_PATH = OUTPUT_DIR / "NZX Directors.csv"          # final CSV name (stable)
+CSV_PATH = OUTPUT_DIR / "NZX_Directors.csv"          # final CSV name (stable)
 HTML_PATH = OUTPUT_DIR / "network_map.html"          # final HTML name (stable)
 
 # If you keep this True locally, the script opens your browser.
@@ -409,3 +409,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
