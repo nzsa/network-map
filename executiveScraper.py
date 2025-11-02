@@ -18,6 +18,31 @@ import colorsys
 import os
 from pathlib import Path
 
+def fix_pyvis_output(html_path: Path):
+    """Fix common pyvis output issues: wrong CDN path; missing #mynetwork container."""
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+
+    # 1) Fix duplicated /dist/dist/ in vis-network CDN path(s)
+    html = html.replace("/dist/dist/vis-network.min.css", "/dist/vis-network.min.css")
+    html = html.replace("/dist/dist/vis-network.min.js",  "/dist/vis-network.min.js")
+
+    # 2) Ensure the network container exists exactly once
+    if 'id="mynetwork"' not in html:
+        # Insert right after <body> (first occurrence only)
+        html = html.replace("<body>", "<body>\n<div id=\"mynetwork\"></div>", 1)
+
+    # Optional: remove accidental duplicate #mynetworks (keep the first)
+    parts = html.split('id="mynetwork"')
+    if len(parts) > 2:
+        # crude dedupe: keep first, turn others into generic divs
+        keep_first = parts[0] + 'id="mynetwork"' + parts[1]
+        rest = 'id="mynetwork"'.join(parts[2:])
+        html = keep_first + rest.replace('id="mynetwork"', '')
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html)
+        
 # ---------- CONFIG ----------
 # Output directory = folder containing this script (repo root)
 OUTPUT_DIR = Path(__file__).parent.resolve()
@@ -214,7 +239,8 @@ def create_network_html(df, html_path: Path):
     </html>
     """)
 
-    net.write_html(str(html_path))
+    net.write_html(str(HTML_PATH))
+    fix_pyvis_output(HTML_PATH)
 
 def scrape_nzx_directors(tickerStrs):
     directorList = []
