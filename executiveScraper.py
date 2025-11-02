@@ -421,7 +421,7 @@ def main():
     # 2) Build HTML to repo root
     create_network_html(directorNetwork, HTML_PATH)
     with open(HTML_PATH, "r", encoding="utf-8") as f:
-    html_text = f.read()
+        html_text = f.read()
 
     stats_block = f"""
     <h2>At a glance</h2>
@@ -466,4 +466,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
