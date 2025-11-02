@@ -203,6 +203,17 @@ def create_network_html(df, html_path: Path):
         }
     }""")
 
+    net.set_template("""
+    <!DOCTYPE html>
+    <html>
+    <head>{{ head }}</head>
+    <body>
+    <div id="stats-panel"><!--STATS_MARKER--></div>
+    {{ body }}
+    </body>
+    </html>
+    """)
+
     net.write_html(str(html_path))
 
 def scrape_nzx_directors(tickerStrs):
@@ -383,6 +394,26 @@ def main():
 
     # 2) Build HTML to repo root
     create_network_html(directorNetwork, HTML_PATH)
+    with open(HTML_PATH, "r", encoding="utf-8") as f:
+    html_text = f.read()
+
+    stats_block = f"""
+    <h2>At a glance</h2>
+    <p>Total directorships: {numPositions}</p>
+    <p>Unique directors: {numUniqueDirectors}</p>
+    <h3>Busiest directors (by # boards)</h3>
+    {busiestHTML}
+    <h3>Most connected directors</h3>
+    {mostConnectedHTML}
+    <h3>Isolated companies</h3>
+    {isolatedCompaniesHTML}
+    <p><a download href="NZX Directors.csv">Download full CSV</a></p>
+    """
+
+    html_text = html_text.replace("<!--STATS_MARKER-->", stats_block)
+
+    with open(HTML_PATH, "w", encoding="utf-8") as f:
+        f.write(html_text)
 
     # 3) Clean + inject custom CSS and overlay
     remove_html_tags(str(HTML_PATH), ['center', 'h1'])
@@ -391,7 +422,7 @@ def main():
     insert_html_tag(str(HTML_PATH), "body", 0, "pre", overlayText, newClass="info-text")
 
     # 4) Insert a Download button that links RELATIVELY to the CSV (works on your website)
-    csv_file_url = "NZX Directors.csv"  # relative to the HTML file location on the server
+    csv_file_url = "NZX_Directors.csv"  # relative to the HTML file location on the server
     insert_html_tag(str(HTML_PATH), "pre", 1, "a", newHref=csv_file_url, priorClass="info-text")
     insert_html_tag(str(HTML_PATH), "a", 0, "button", "Download Data", newClass="top-right-button")
     insert_html_tag(str(HTML_PATH), "a", 1, "div", priorClass="top-right-button", newId='mynetwork')
@@ -409,4 +440,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
