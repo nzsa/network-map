@@ -406,8 +406,8 @@ def main():
     <h3>Most connected directors</h3>
     {mostConnectedHTML}
     <h3>Isolated companies</h3>
-    {isolatedCompaniesHTML}
-    <p><a download href="NZX Directors.csv">Download full CSV</a></p>
+    {isolatedCompanies}
+    <p><a download href="NZX_Directors.csv">Download full CSV</a></p>
     """
 
     html_text = html_text.replace("<!--STATS_MARKER-->", stats_block)
@@ -440,3 +440,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
