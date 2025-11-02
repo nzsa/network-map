@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "0 13 * * *"   # 02:00 NZDT (UTC+13)
-    - cron: "0 14 * * *"   # 02:00 NZST (UTC+12)
 
 jobs:
   build-and-deploy:
