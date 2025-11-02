@@ -50,6 +50,6 @@ jobs:
           port:     22
           username: ${{ secrets.LIGHTSAIL_USER }}
           ssh_private_key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          local_path:  "NZX Directors.csv"
+          local_path:  "NZX_Directors.csv"
           remote_path: "/opt/bitnami/wordpress/wp-content/uploads/network-map/"
           sftp_only:   true
