@@ -431,10 +431,8 @@ def main():
     # 1) Write CSV to repo root
     directorDf.to_csv(CSV_PATH, encoding="utf-8")
 
-    # 2) Build HTML to repo root
+    # 2) Build HTML to repo root (graph first, patch, then inject sidebar)
     create_network_html(directorNetwork, HTML_PATH)
-    with open(HTML_PATH, "r", encoding="utf-8") as f:
-        html_text = f.read()
 
 	# assuming these exist:
 	# numPositions (int), numUniqueDirectors (int)
@@ -455,10 +453,8 @@ def main():
 <p><a download href="NZX_Directors.csv">Download full CSV</a></p>
 """
 
-    html_text = html_text.replace("<!--STATS_MARKER-->", stats_block)
-
-    with open(HTML_PATH, "w", encoding="utf-8") as f:
-        f.write(html_text)
+    fix_pyvis_output(HTML_PATH)
+    inject_stats_sidebar(HTML_PATH, stats_block)
 
     # 3) Clean + inject custom CSS and overlay
     remove_html_tags(str(HTML_PATH), ['center', 'h1'])
@@ -485,6 +481,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
