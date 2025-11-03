@@ -252,8 +252,6 @@ def create_network_html(df, html_path: Path):
     }""")
 
     net.write_html(str(HTML_PATH))
-    fix_pyvis_output(HTML_PATH)
-    inject_stats_sidebar(HTML_PATH, stats_block)
 
 def scrape_nzx_directors(tickerStrs):
     directorList = []
@@ -468,6 +466,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
