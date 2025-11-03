@@ -442,7 +442,7 @@ def main():
 	# most_connected (a pandas Series: name -> #connections)
 	# isolatedCompanies (int)
 
-	stats_block = f"""
+    stats_block = f"""
 <h2>At a glance</h2>
 <p>Total directorships: {numPositions}</p>
 <p>Unique directors: {numUniqueDirectors}</p>
@@ -485,6 +485,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
