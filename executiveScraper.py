@@ -22,16 +22,31 @@ def fix_pyvis_output(html_path: Path):
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
 
-    # 1) Fix duplicated /dist/dist/ in vis-network CDN path(s)
-    html = html.replace("/dist/dist/vis-network.min.css", "/dist/vis-network.min.css")
-    html = html.replace("/dist/dist/vis-network.min.js",  "/dist/vis-network.min.js")
+    # 1) Remove the non-existent local utils.js
+    html = html.replace('<script src="lib/bindings/utils.js"></script>', "")
+    
+    # 2) Fix duplicated /dist/dist/ in vis-network CDN path(s)
+    html = html.replace("/dist/dist/vis-network.min.css", "/vis-network.min.css")
+    html = html.replace("/dist/dist/vis-network.min.js",  "/vis-network.min.js")
+    html = html.replace("/dist/vis-network.min.css",      "/vis-network.min.css")
+    html = html.replace("/dist/vis-network.min.js",       "/vis-network.min.js")
+    
+    # 3) Rewrite full tags to the correct cdnjs URLs and drop integrity (avoid mismatch)
+    html = re.sub(
+        r'<link[^>]+href="https://cdnjs\.cloudflare\.com/ajax/libs/vis-network/9\.1\.2[^"]+"[^>]*>',
+        '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/vis-network.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />',
+        html
+    )
+    html = re.sub(
+        r'<script[^>]+src="https://cdnjs\.cloudflare\.com/ajax/libs/vis-network/9\.1\.2[^"]+"[^>]*></script>',
+        '<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/vis-network.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>',
+        html
+    )
 
-    # 2) Ensure the network container exists exactly once
+    # 4) Ensure the network container exists exactly once
     if 'id="mynetwork"' not in html:
         # Insert right after <body> (first occurrence only)
         html = html.replace("<body>", "<body>\n<div id=\"mynetwork\"></div>", 1)
-
-    # Optional: remove accidental duplicate #mynetworks (keep the first)
     parts = html.split('id="mynetwork"')
     if len(parts) > 2:
         # crude dedupe: keep first, turn others into generic divs
@@ -466,6 +481,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
