@@ -443,17 +443,17 @@ def main():
 	# isolatedCompanies (int)
 
 	stats_block = f"""
-	<h2>At a glance</h2>
-	<p>Total directorships: {numPositions}</p>
-	<p>Unique directors: {numUniqueDirectors}</p>
-	<h3>Busiest directors (by # boards)</h3>
-	<pre>{busiest_directors.head(10).to_string()}</pre>
-	<h3>Most connected directors</h3>
-	<pre>{most_connected.head(10).to_string()}</pre>
-	<h3>Isolated companies</h3>
-	<p>{isolatedCompanies}</p>
-	<p><a download href="NZX_Directors.csv">Download full CSV</a></p>
-	"""
+<h2>At a glance</h2>
+<p>Total directorships: {numPositions}</p>
+<p>Unique directors: {numUniqueDirectors}</p>
+<h3>Busiest directors (by # boards)</h3>
+<pre>{busiest_directors.head(10).to_string()}</pre>
+<h3>Most connected directors</h3>
+<pre>{most_connected.head(10).to_string()}</pre>
+<h3>Isolated companies</h3>
+<p>{isolatedCompanies}</p>
+<p><a download href="NZX_Directors.csv">Download full CSV</a></p>
+"""
 
     html_text = html_text.replace("<!--STATS_MARKER-->", stats_block)
 
@@ -485,6 +485,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
