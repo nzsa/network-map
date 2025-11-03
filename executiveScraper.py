@@ -19,7 +19,6 @@ import os
 from pathlib import Path
 
 def fix_pyvis_output(html_path: Path):
-    """Fix common pyvis output issues: wrong CDN path; missing #mynetwork container."""
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
 
@@ -39,6 +38,30 @@ def fix_pyvis_output(html_path: Path):
         keep_first = parts[0] + 'id="mynetwork"' + parts[1]
         rest = 'id="mynetwork"'.join(parts[2:])
         html = keep_first + rest.replace('id="mynetwork"', '')
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html)
+        
+def inject_stats_sidebar(html_path: Path, stats_html: str):
+    """Insert a left sidebar and keep the original #mynetwork working."""
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+
+    # Normalize any lingering spacey CSV link text
+    html = html.replace("NZX Directors.csv", "NZX_Directors.csv")
+
+    if '<div id="stats-panel"' not in html and '<div id="mynetwork"' in html:
+        sidebar = (
+            '<div id="stats-panel" '
+            'style="position:absolute;left:0;top:0;bottom:0;width:360px;'
+            'overflow:auto;padding:12px;border-right:1px solid #e5e5e5;'
+            'background:#fff;z-index:2;font:14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;">'
+            f'{stats_html}'
+            '</div>'
+            '<style>#mynetwork{position:absolute;left:360px;right:0;top:0;bottom:0;}</style>'
+        )
+        # Insert sidebar just before the first #mynetwork container
+        html = html.replace('<div id="mynetwork">', sidebar + '<div id="mynetwork">', 1)
 
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)
@@ -228,19 +251,9 @@ def create_network_html(df, html_path: Path):
         }
     }""")
 
-    net.set_template("""
-    <!DOCTYPE html>
-    <html>
-    <head>{{ head }}</head>
-    <body>
-    <div id="stats-panel"><!--STATS_MARKER--></div>
-    {{ body }}
-    </body>
-    </html>
-    """)
-
     net.write_html(str(HTML_PATH))
     fix_pyvis_output(HTML_PATH)
+    inject_stats_sidebar(HTML_PATH, stats_block)
 
 def scrape_nzx_directors(tickerStrs):
     directorList = []
@@ -466,5 +479,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
