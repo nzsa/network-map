@@ -434,26 +434,13 @@ def main():
     # 2) Build HTML to repo root (graph first, patch, then inject sidebar)
     create_network_html(directorNetwork, HTML_PATH)
 
-	# assuming these exist:
-	# numPositions (int), numUniqueDirectors (int)
-	# busiest_directors (a pandas Series: name -> #companies)
-	# most_connected (a pandas Series: name -> #connections)
-	# isolatedCompanies (int)
+    fix_pyvis_output(HTML_PATH)
 
+    import html
     stats_block = f"""
-<h2>At a glance</h2>
-<p>Total directorships: {numPositions}</p>
-<p>Unique directors: {numUniqueDirectors}</p>
-<h3>Busiest directors (by # boards)</h3>
-<pre>{busiest_directors.head(10).to_string()}</pre>
-<h3>Most connected directors</h3>
-<pre>{most_connected.head(10).to_string()}</pre>
-<h3>Isolated companies</h3>
-<p>{isolatedCompanies}</p>
+<pre>{html.escape(overlayText)}</pre>
 <p><a download href="NZX_Directors.csv">Download full CSV</a></p>
 """
-
-    fix_pyvis_output(HTML_PATH)
     inject_stats_sidebar(HTML_PATH, stats_block)
 
     # 3) Clean + inject custom CSS and overlay
@@ -481,6 +468,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
