@@ -23,61 +23,56 @@ def fix_pyvis_output(html_path: Path):
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
 
-    # 1) Remove the non-existent local utils.js
+    # 0) Remove non-existent local include
     html = html.replace('<script src="lib/bindings/utils.js"></script>', "")
-    
-    # 2) Fix duplicated /dist/dist/ in vis-network CDN path(s)
+
+    # 1) Strip integrity attrs on vis-network/stylesheet
+    html = re.sub(r'\s+integrity="[^"]+"', "", html)
+
+    # 2) Normalize any cdnjs /dist variants to a canonical placeholder
     html = html.replace("/dist/dist/vis-network.min.css", "/vis-network.min.css")
     html = html.replace("/dist/dist/vis-network.min.js",  "/vis-network.min.js")
     html = html.replace("/dist/vis-network.min.css",      "/vis-network.min.css")
     html = html.replace("/dist/vis-network.min.js",       "/vis-network.min.js")
-    
-    # 3) Rewrite full tags to the correct cdnjs URLs and drop integrity (avoid mismatch)
+
+    # 3) Rewrite vis-network tags to jsDelivr (CSS + JS)
+    #    Replace any existing vis-network <link> tag
     html = re.sub(
-        r'<link[^>]+href="https://cdnjs\.cloudflare\.com/ajax/libs/vis-network/9\.1\.2[^"]+"[^>]*>',
-        '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/vis-network.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />',
-        html
+        r'<link[^>]+vis-network[^>]+>',
+        '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vis-network@9.1.2/styles/vis-network.min.css" />',
+        html,
+        flags=re.IGNORECASE
     )
+    #    Replace any existing vis-network <script> tag
     html = re.sub(
-        r'<script[^>]+src="https://cdnjs\.cloudflare\.com/ajax/libs/vis-network/9\.1\.2[^"]+"[^>]*></script>',
-        '<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/vis-network.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>',
-        html
+        r'<script[^>]+vis-network[^>]+></script>',
+        '<script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.2/standalone/umd/vis-network.min.js"></script>',
+        html,
+        flags=re.IGNORECASE
     )
 
     # 4) Ensure the network container exists exactly once
     if 'id="mynetwork"' not in html:
-        # Insert right after <body> (first occurrence only)
-        html = html.replace("<body>", "<body>\n<div id=\"mynetwork\"></div>", 1)
+        html = html.replace("<body>", '<body>\n<div id="mynetwork"></div>', 1)
     parts = html.split('id="mynetwork"')
     if len(parts) > 2:
-        # crude dedupe: keep first, turn others into generic divs
         keep_first = parts[0] + 'id="mynetwork"' + parts[1]
         rest = 'id="mynetwork"'.join(parts[2:])
         html = keep_first + rest.replace('id="mynetwork"', '')
 
-    with open(html_path, "w", encoding="utf-8") as f:
-        f.write(html)
-        
-def inject_stats_sidebar(html_path: Path, stats_html: str):
-    """Insert a left sidebar and keep the original #mynetwork working."""
-    with open(html_path, "r", encoding="utf-8") as f:
-        html = f.read()
-
-    # Normalize any lingering spacey CSV link text
-    html = html.replace("NZX Directors.csv", "NZX_Directors.csv")
-
-    if '<div id="stats-panel"' not in html and '<div id="mynetwork"' in html:
-        sidebar = (
-            '<div id="stats-panel" '
-            'style="position:absolute;left:0;top:0;bottom:0;width:360px;'
-            'overflow:auto;padding:12px;border-right:1px solid #e5e5e5;'
-            'background:#fff;z-index:2;font:14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;">'
-            f'{stats_html}'
-            '</div>'
-            '<style>#mynetwork{position:absolute;left:360px;right:0;top:0;bottom:0;}</style>'
-        )
-        # Insert sidebar just before the first #mynetwork container
-        html = html.replace('<div id="mynetwork">', sidebar + '<div id="mynetwork">', 1)
+    # 5) Make sure the container has height (so it’s not invisible)
+    if "#mynetwork" not in html:
+        html += ""
+    style_inject = (
+        "<style>"
+        "html,body{height:100%;margin:0;padding:0;}"
+        "#mynetwork{position:absolute;left:360px;right:0;top:0;bottom:0;}"  # sidebar offset
+        "#stats-panel{position:absolute;left:0;top:0;bottom:0;width:360px;overflow:auto;padding:12px;"
+        "border-right:1px solid #e5e5e5;background:#fff;z-index:2;font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}"
+        "</style>"
+    )
+    if style_inject not in html:
+        html = html.replace("</head>", style_inject + "</head>", 1)
 
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)
@@ -482,6 +477,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
