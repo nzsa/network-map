@@ -276,7 +276,7 @@ def create_network_html(df, html_path: Path):
         }
     }""")
 
-    net.write_html(str(HTML_PATH))
+    net.write_html(str(html_path))
 
 def scrape_nzx_directors(tickerStrs):
     directorList = []
@@ -459,7 +459,7 @@ def main():
 
     fix_pyvis_output(HTML_PATH)
     
-    import html as html
+    import html as _html
     stats_block = f"""
 <pre>{html.escape(overlayText)}</pre>
 <p><a download href="NZX_Directors.csv">Download full CSV</a></p>
