@@ -23,18 +23,19 @@ def fix_pyvis_output(html_path: Path):
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
 
-    # 0) Remove non-existent local include
+    # 1) Remove the non-existent local utils.js
     html = html.replace('<script src="lib/bindings/utils.js"></script>', "")
-
-    # 1) Strip integrity attrs on vis-network/stylesheet
+    
+    # 1a) Strip integrity attrs on vis-network/stylesheet
     html = re.sub(r'\s+integrity="[^"]+"', "", html)
+    
+    # 2) Fix duplicated /dist/dist/ in vis-network CDN path(s)
+    for bad in ["/dist/dist/vis-network.min.css", "/dist/vis-network.min.css"]:
+        html = html.replace(bad, "/vis-network.min.css")
+    for bad in ["/dist/dist/vis-network.min.js", "/dist/vis-network.min.js"]:
+        html = html.replace(bad, "/vis-network.min.js")
 
-    # 2) Normalize any cdnjs /dist variants to a canonical placeholder
-    html = html.replace("/dist/dist/vis-network.min.css", "/vis-network.min.css")
-    html = html.replace("/dist/dist/vis-network.min.js",  "/vis-network.min.js")
-    html = html.replace("/dist/vis-network.min.css",      "/vis-network.min.css")
-    html = html.replace("/dist/vis-network.min.js",       "/vis-network.min.js")
-
+    
     # 3) Rewrite vis-network tags to jsDelivr (CSS + JS)
     #    Replace any existing vis-network <link> tag
     html = re.sub(
@@ -60,19 +61,32 @@ def fix_pyvis_output(html_path: Path):
         rest = 'id="mynetwork"'.join(parts[2:])
         html = keep_first + rest.replace('id="mynetwork"', '')
 
-    # 5) Make sure the container has height (so it’s not invisible)
-    if "#mynetwork" not in html:
-        html += ""
-    style_inject = (
-        "<style>"
-        "html,body{height:100%;margin:0;padding:0;}"
-        "#mynetwork{position:absolute;left:360px;right:0;top:0;bottom:0;}"  # sidebar offset
-        "#stats-panel{position:absolute;left:0;top:0;bottom:0;width:360px;overflow:auto;padding:12px;"
-        "border-right:1px solid #e5e5e5;background:#fff;z-index:2;font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}"
-        "</style>"
+    # 5) ensure the page/layout has height and the network is visible (sidebar offset handled later)
+    style = (
+        "<style>html,body{height:100%;margin:0;padding:0;}#mynetwork{position:absolute;left:360px;right:0;top:0;bottom:0;}</style>"
     )
-    if style_inject not in html:
-        html = html.replace("</head>", style_inject + "</head>", 1)
+    if "</head>" in html and style not in html:
+        html = html.replace("</head>", style + "</head>", 1)
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html)
+        
+def inject_stats_sidebar(html_path: Path, stats_html: str):
+    """Insert a left sidebar and keep the original #mynetwork working."""
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+
+    if '<div id="stats-panel"' not in html:
+        sidebar = (
+            '<div id="stats-panel" '
+            'style="position:absolute;left:0;top:0;bottom:0;width:360px;'
+            'overflow:auto;padding:12px;border-right:1px solid #e5e5e5;'
+            'background:#fff;z-index:2;font:14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;">'
+            f'{stats_html}'
+            '</div>'
+        )
+        # Insert sidebar just before the first #mynetwork container
+        html = html.replace('<div id="mynetwork">', sidebar + '<div id="mynetwork">', 1)
 
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)
@@ -437,32 +451,22 @@ def main():
         busiestHTML + '\n\n' + mostConnectedHTML
     )
 
-    # 1) Write CSV to repo root
+    # Write CSV to repo root
     directorDf.to_csv(CSV_PATH, encoding="utf-8")
 
-    # 2) Build HTML to repo root (graph first, patch, then inject sidebar)
+    # Build HTML to repo root (graph first, patch, then inject sidebar)
     create_network_html(directorNetwork, HTML_PATH)
 
     fix_pyvis_output(HTML_PATH)
-
-    import html
+    
+    import html as html
     stats_block = f"""
 <pre>{html.escape(overlayText)}</pre>
 <p><a download href="NZX_Directors.csv">Download full CSV</a></p>
 """
+
+    # Insert the left sidebar (no BeautifulSoup rewrites of scripts/styles/containers)
     inject_stats_sidebar(HTML_PATH, stats_block)
-
-    # 3) Clean + inject custom CSS and overlay
-    remove_html_tags(str(HTML_PATH), ['center', 'h1'])
-    insert_css(str(HTML_PATH), css_style)
-    remove_html_tags(str(HTML_PATH), ['div'], ['card', 'card-body'])
-    insert_html_tag(str(HTML_PATH), "body", 0, "pre", overlayText, newClass="info-text")
-
-    # 4) Insert a Download button that links RELATIVELY to the CSV (works on your website)
-    csv_file_url = "NZX_Directors.csv"  # relative to the HTML file location on the server
-    insert_html_tag(str(HTML_PATH), "pre", 1, "a", newHref=csv_file_url, priorClass="info-text")
-    insert_html_tag(str(HTML_PATH), "a", 0, "button", "Download Data", newClass="top-right-button")
-    insert_html_tag(str(HTML_PATH), "a", 1, "div", priorClass="top-right-button", newId='mynetwork')
 
     print(f"✅ Wrote CSV:  {CSV_PATH}")
     print(f"✅ Wrote HTML: {HTML_PATH}")
@@ -477,14 +481,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
 
