@@ -65,7 +65,7 @@ def fix_pyvis_output(html_path: Path, sidebar_width_px: int = 300):
     style = (
         f"<style>"
         f"html,body{{height:100%;margin:0;padding:0;}}"
-        f"#mynetwork{{position:absolute;left:{sidebar_width_px}px;right:0;top:0;bottom:0;}}"
+        f"#mynetwork{{position:absolute;left:300px!important;right:0;top:0;bottom:0;}}"
         f"</style>"
     )
     if "</head>" in html and style not in html:
@@ -83,7 +83,7 @@ def inject_stats_sidebar(html_path: Path, stats_html: str, sidebar_width_px: int
         f'<div id="stats-panel" '
         f'style="position:absolute;left:0;top:0;bottom:0;width:{sidebar_width_px}px;'
         f'overflow:auto;padding:12px;border-right:1px solid #e5e5e5;'
-        f'background:#fff;z-index:2;font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;">'
+        f'background:#fff;z-index:1000;color:#111;font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;">'
         f'{stats_html}'
         f'</div>'
     )
@@ -95,6 +95,16 @@ def inject_stats_sidebar(html_path: Path, stats_html: str, sidebar_width_px: int
     else:
         # Fallback: if somehow not found, prepend at start of <body>
         html = html.replace("<body>", "<body>" + sidebar, 1)
+        
+        # Ensure the panel text/link render correctly and the canvas aligns with the panel
+    style = (
+        "<style>"
+        "#stats-panel pre{white-space:pre-wrap;word-break:break-word;margin:0 0 12px;color:#111;}"
+        "#stats-panel a{color:#0d6efd;text-decoration:underline;}"
+        "</style>"
+    )
+    if "</head>" in html and style not in html:
+        html = html.replace("</head>", style + "</head>", 1)
 
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)
