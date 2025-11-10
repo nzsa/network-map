@@ -19,7 +19,7 @@ import os
 from pathlib import Path
 import re
 
-def fix_pyvis_output(html_path: Path):
+def fix_pyvis_output(html_path: Path, sidebar_width_px: int = 300):
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
 
@@ -63,7 +63,10 @@ def fix_pyvis_output(html_path: Path):
 
     # 5) ensure the page/layout has height and the network is visible (sidebar offset handled later)
     style = (
-        "<style>html,body{height:100%;margin:0;padding:0;}#mynetwork{position:absolute;left:360px;right:0;top:0;bottom:0;}</style>"
+        f"<style>"
+        f"html,body{{height:100%;margin:0;padding:0;}}"
+        f"#mynetwork{{position:absolute;left:{sidebar_width_px}px;right:0;top:0;bottom:0;}}"
+        f"</style>"
     )
     if "</head>" in html and style not in html:
         html = html.replace("</head>", style + "</head>", 1)
@@ -71,31 +74,27 @@ def fix_pyvis_output(html_path: Path):
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)
         
-def inject_stats_sidebar(html_path: Path, stats_html: str):
+def inject_stats_sidebar(html_path: Path, stats_html: str, sidebar_width_px: int = 300):
     """Insert a left sidebar and keep the original #mynetwork working."""
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
 
-    if '<div id="stats-panel"' not in html:
-        sidebar = (
-            '<div id="stats-panel" '
-            'style="position:absolute;left:0;top:0;bottom:0;width:360px;'
-            'overflow:auto;padding:12px;border-right:1px solid #e5e5e5;'
-            'background:#fff;z-index:2;font:14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;">'
-            f'{stats_html}'
-            '</div>'
-        )
-        
-        # Insert sidebar immediately BEFORE the first #mynetwork div, regardless of attributes/whitespace
-        html = re.sub(r'(<div[^>]*\bid="mynetwork"\b[^>]*>)', sidebar + r'\1', html, count=1, flags=re.IGNORECASE)
-
-    # Ensure page has height and network shifted right for the sidebar (idempotent)
-    style = (
-        "<style>html,body{height:100%;margin:0;padding:0;}#mynetwork{position:absolute;"
-        "left:360px;right:0;top:0;bottom:0;}</style>"
+    sidebar = (
+        f'<div id="stats-panel" '
+        f'style="position:absolute;left:0;top:0;bottom:0;width:{sidebar_width_px}px;'
+        f'overflow:auto;padding:12px;border-right:1px solid #e5e5e5;'
+        f'background:#fff;z-index:2;font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;">'
+        f'{stats_html}'
+        f'</div>'
     )
-    if "</head>" in html and style not in html:
-        html = html.replace("</head>", style + "</head>", 1)
+        
+    # Insert the sidebar immediately before the first #mynetwork div (match with any attributes/whitespace)
+    pattern = r'(<div[^>]*\bid=["\']mynetwork["\'][^>]*>)'
+    if re.search(pattern, html, flags=re.IGNORECASE):
+        html = re.sub(pattern, sidebar + r'\1', html, count=1, flags=re.IGNORECASE)
+    else:
+        # Fallback: if somehow not found, prepend at start of <body>
+        html = html.replace("<body>", "<body>" + sidebar, 1)
 
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)
@@ -466,7 +465,7 @@ def main():
     # Build HTML to repo root (graph first, patch, then inject sidebar)
     create_network_html(directorNetwork, HTML_PATH)
 
-    fix_pyvis_output(HTML_PATH)
+    fix_pyvis_output(HTML_PATH, sidebar_width_px=300)
     
     import html
     stats_block = f"""
@@ -475,7 +474,7 @@ def main():
 """
 
     # Insert the left sidebar (no BeautifulSoup rewrites of scripts/styles/containers)
-    inject_stats_sidebar(HTML_PATH, stats_block)
+    inject_stats_sidebar(HTML_PATH, stats_block, sidebar_width_px=300)
 
     print(f"✅ Wrote CSV:  {CSV_PATH}")
     print(f"✅ Wrote HTML: {HTML_PATH}")
@@ -490,5 +489,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
