@@ -85,8 +85,17 @@ def inject_stats_sidebar(html_path: Path, stats_html: str):
             f'{stats_html}'
             '</div>'
         )
-        # Insert sidebar just before the first #mynetwork container
-        html = html.replace('<div id="mynetwork">', sidebar + '<div id="mynetwork">', 1)
+        
+        # Insert sidebar immediately BEFORE the first #mynetwork div, regardless of attributes/whitespace
+        html = re.sub(r'(<div[^>]*\bid="mynetwork"\b[^>]*>)', sidebar + r'\1', html, count=1, flags=re.IGNORECASE)
+
+    # Ensure page has height and network shifted right for the sidebar (idempotent)
+    style = (
+        "<style>html,body{height:100%;margin:0;padding:0;}#mynetwork{position:absolute;"
+        "left:360px;right:0;top:0;bottom:0;}</style>"
+    )
+    if "</head>" in html and style not in html:
+        html = html.replace("</head>", style + "</head>", 1)
 
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)
