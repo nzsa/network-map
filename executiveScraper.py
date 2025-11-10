@@ -468,7 +468,7 @@ def main():
 
     fix_pyvis_output(HTML_PATH)
     
-    import html as _html
+    import html
     stats_block = f"""
 <pre>{html.escape(overlayText)}</pre>
 <p><a download href="NZX_Directors.csv">Download full CSV</a></p>
@@ -490,4 +490,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
