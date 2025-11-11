@@ -475,12 +475,11 @@ def main():
 <h2>At a glance</h2>
 <p>Total directorships: {numPositions}</p>
 <p>Unique directors: {numUniqueDirectors}</p>
+<p>Isolated companies: {isolatedCompanies}</p>
 <h3>Busiest directors (by # boards)</h3>
 {busiestHTML}
 <h3>Most connected directors</h3>
 {mostConnectedHTML}
-<h3>Isolated companies</h3>
-{isolatedCompaniesHTML}
 <p><a download href="NZX_Directors.csv">Download full CSV</a></p>
 """
 
@@ -500,4 +499,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
