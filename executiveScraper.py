@@ -65,7 +65,7 @@ def fix_pyvis_output(html_path: Path, sidebar_width_px: int = 300):
     style = (
         f"<style>"
         f"html,body{{height:100%;margin:0;padding:0;}}"
-        f"#mynetwork{{position:absolute;left:300px!important;right:0;top:0;bottom:0;}}"
+        f"#mynetwork{{position:absolute;left:360px!important;right:0;top:0;bottom:0;}}"
         f"</style>"
     )
     if "</head>" in html and style not in html:
@@ -74,14 +74,13 @@ def fix_pyvis_output(html_path: Path, sidebar_width_px: int = 300):
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)
         
-def inject_stats_sidebar(html_path: Path, stats_html: str, sidebar_width_px: int = 300):
-    """Insert a left sidebar and keep the original #mynetwork working."""
+def inject_stats_sidebar(html_path: Path, stats_html: str, sidebar_width_px: int = 360, sidebar_height_px: int = 750):
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
 
     sidebar = (
         f'<div id="stats-panel" '
-        f'style="position:absolute;left:0;top:0;bottom:0;width:{sidebar_width_px}px;'
+        f'style="position:absolute;left:0;top:0;bottom:0;width:{sidebar_width_px}px;;height:{sidebar_height_px}px;'
         f'overflow:auto;padding:12px;border-right:1px solid #e5e5e5;'
         f'background:#fff;z-index:1000;color:#111;font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;">'
         f'{stats_html}'
@@ -99,7 +98,10 @@ def inject_stats_sidebar(html_path: Path, stats_html: str, sidebar_width_px: int
         # Ensure the panel text/link render correctly and the canvas aligns with the panel
     style = (
         "<style>"
-        "#stats-panel pre{white-space:pre-wrap;word-break:break-word;margin:0 0 12px;color:#111;}"
+        "#stats-panel h2{margin:0 0 10px;font-size:18px;}"
+        "#stats-panel h3{margin:18px 0 8px;font-size:16px;}"
+        "#stats-panel p{margin:0 0 10px;}"
+        "#stats-panel pre.mono{white-space:pre; font:13px ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; margin:0 0 20px; color:#111;}"
         "#stats-panel a{color:#0d6efd;text-decoration:underline;}"
         "</style>"
     )
@@ -293,6 +295,21 @@ def create_network_html(df, html_path: Path):
             "stabilization": {"iterations": 200}
         }
     }""")
+    
+def series_to_two_col_html(s: pd.Series, col2_label: str, max_items: int = 10) -> str:
+    s = s.sort_values(ascending=False).head(max_items)
+    header = (
+        '<div class="stat-header">'
+        '<span class="h-name">Name</span>'
+        f'<span class="h-val">{col2_label}</span>'
+        '</div>'
+    )
+    rows = "".join(
+        f'<tr><td class="t-name">{name}</td><td class="t-val">{int(val)}</td></tr>'
+        for name, val in s.items()
+    )
+    table = f'<table class="stat-table">{rows}</table>'
+    return f'<div class="stat-block">{header}{table}</div>'
 
     net.write_html(str(html_path))
 
@@ -477,14 +494,14 @@ def main():
 <p>Unique directors: {numUniqueDirectors}</p>
 <p>Isolated companies: {isolatedCompanies}</p>
 <h3>Busiest directors (by # boards)</h3>
-{busiestHTML}
+<pre class="mono">{busiestHTML}</pre>
 <h3>Most connected directors</h3>
-{mostConnectedHTML}
+<pre class="mono">{mostConnectedHTML}</pre>
 <p><a download href="NZX_Directors.csv">Download full CSV</a></p>
 """
 
     # Insert the left sidebar (no BeautifulSoup rewrites of scripts/styles/containers)
-    inject_stats_sidebar(HTML_PATH, stats_block, sidebar_width_px=300)
+    inject_stats_sidebar(HTML_PATH, stats_block, sidebar_width_px=360, sidebar_height_px=750)
 
     print(f"✅ Wrote CSV:  {CSV_PATH}")
     print(f"✅ Wrote HTML: {HTML_PATH}")
@@ -499,5 +516,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
