@@ -462,13 +462,6 @@ def main():
     mostConnectedHTML = df_to_pretty_text(pd.Series(mostConnected), "Name", "# Connections")
     isolatedCompanies = count_isolated_companies(directorNetwork)
 
-    overlayText = (
-        '# Positions: ' + str(numPositions) + '\n\n' +
-        '# Unique Directors: ' + str(numUniqueDirectors) + '\n\n' +
-        '# Isolated Companies: ' + str(isolatedCompanies) + '\n\n' +
-        busiestHTML + '\n\n' + mostConnectedHTML
-    )
-
     # Write CSV to repo root
     directorDf.to_csv(CSV_PATH, encoding="utf-8")
 
@@ -479,7 +472,15 @@ def main():
     
     import html
     stats_block = f"""
-<pre>{html.escape(overlayText)}</pre>
+<h2>At a glance</h2>
+<p>Total directorships: {numPositions}</p>
+<p>Unique directors: {numUniqueDirectors}</p>
+<h3>Busiest directors (by # boards)</h3>
+{busiestHTML}
+<h3>Most connected directors</h3>
+{mostConnectedHTML}
+<h3>Isolated companies</h3>
+{isolatedCompaniesHTML}
 <p><a download href="NZX_Directors.csv">Download full CSV</a></p>
 """
 
