@@ -490,7 +490,7 @@ def main():
     create_network_html(directorNetwork, HTML_PATH)
     
     if not HTML_PATH.exists():
-    raise RuntimeError(f"create_network_html did not write {HTML_PATH}")
+        raise RuntimeError(f"create_network_html did not write {HTML_PATH}")
 
     fix_pyvis_output(HTML_PATH, sidebar_width_px=360)
     
@@ -523,4 +523,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
