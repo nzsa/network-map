@@ -459,7 +459,7 @@ def main():
     numUniqueDirectors = directorNetwork.shape[0]
 
     print(busiestDirectors)
-    busiestHTML = df_to_pretty_text(busiestDirectors)
+    busiestHTML = df_to_pretty_text(busiestDirectors, "Name", "# Companies")
     mostConnected = count_connections(directorNetwork)
     mostConnectedHTML = df_to_pretty_text(pd.Series(mostConnected), "Name", "# Connections")
     isolatedCompanies = count_isolated_companies(directorNetwork)
@@ -502,4 +502,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
