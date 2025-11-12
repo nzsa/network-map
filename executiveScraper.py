@@ -19,7 +19,7 @@ import os
 from pathlib import Path
 import re
 
-def fix_pyvis_output(html_path: Path, sidebar_width_px: int = 300):
+def fix_pyvis_output(html_path: Path, sidebar_width_px: int = 360):
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
 
@@ -296,6 +296,10 @@ def create_network_html(df, html_path: Path):
         }
     }""")
     
+    print(f"[create_network_html] writing to: {html_path.resolve()}")
+    net.write_html(str(html_path))
+    print("[create_network_html] done writing HTML.")
+    
 def series_to_two_col_html(s: pd.Series, col2_label: str, max_items: int = 10) -> str:
     s = s.sort_values(ascending=False).head(max_items)
     header = (
@@ -484,8 +488,11 @@ def main():
 
     # Build HTML to repo root (graph first, patch, then inject sidebar)
     create_network_html(directorNetwork, HTML_PATH)
+    
+    if not HTML_PATH.exists():
+    raise RuntimeError(f"create_network_html did not write {HTML_PATH}")
 
-    fix_pyvis_output(HTML_PATH, sidebar_width_px=300)
+    fix_pyvis_output(HTML_PATH, sidebar_width_px=360)
     
     import html
     stats_block = f"""
