@@ -296,25 +296,6 @@ def create_network_html(df, html_path: Path):
         }
     }""")
     
-    print(f"[create_network_html] writing to: {html_path.resolve()}")
-    net.write_html(str(html_path))
-    print("[create_network_html] done writing HTML.")
-    
-def series_to_two_col_html(s: pd.Series, col2_label: str, max_items: int = 10) -> str:
-    s = s.sort_values(ascending=False).head(max_items)
-    header = (
-        '<div class="stat-header">'
-        '<span class="h-name">Name</span>'
-        f'<span class="h-val">{col2_label}</span>'
-        '</div>'
-    )
-    rows = "".join(
-        f'<tr><td class="t-name">{name}</td><td class="t-val">{int(val)}</td></tr>'
-        for name, val in s.items()
-    )
-    table = f'<table class="stat-table">{rows}</table>'
-    return f'<div class="stat-block">{header}{table}</div>'
-
     net.write_html(str(html_path))
 
 def scrape_nzx_directors(tickerStrs):
@@ -488,9 +469,6 @@ def main():
 
     # Build HTML to repo root (graph first, patch, then inject sidebar)
     create_network_html(directorNetwork, HTML_PATH)
-    
-    if not HTML_PATH.exists():
-        raise RuntimeError(f"create_network_html did not write {HTML_PATH}")
 
     fix_pyvis_output(HTML_PATH, sidebar_width_px=360)
     
@@ -501,9 +479,9 @@ def main():
 <p>Unique directors: {numUniqueDirectors}</p>
 <p>Isolated companies: {isolatedCompanies}</p>
 <h3>Busiest directors (by # boards)</h3>
-<pre class="mono">{busiestHTML}</pre>
+{busiestHTML}
 <h3>Most connected directors</h3>
-<pre class="mono">{mostConnectedHTML}</pre>
+{mostConnectedHTML}
 <p><a download href="NZX_Directors.csv">Download full CSV</a></p>
 """
 
@@ -523,5 +501,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
