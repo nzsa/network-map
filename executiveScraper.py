@@ -63,10 +63,10 @@ def fix_pyvis_output(html_path: Path, sidebar_width_px: int = 360):
 
     # 5) ensure the page/layout has height and the network is visible (sidebar offset handled later)
     style = (
-        f"<style>"
-        f"html,body{{height:100%;margin:0;padding:0;}}"
-        f"#mynetwork{{position:absolute;left:360px!important;right:0;top:0;bottom:0;}}"
-        f"</style>"
+        "<style>"
+        "html,body{height:100%;margin:0;padding:0;}"
+        "#mynetwork{width:100%;height:750px;}"
+        "</style>"
     )
     if "</head>" in html and style not in html:
         html = html.replace("</head>", style + "</head>", 1)
@@ -74,34 +74,40 @@ def fix_pyvis_output(html_path: Path, sidebar_width_px: int = 360):
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)
         
-def inject_stats_sidebar(html_path: Path, stats_html: str, sidebar_width_px: int = 360, sidebar_height_px: int = 750):
+def inject_stats_above_map(html_path: Path, stats_html: str):
+    """Insert stats panel above the network div, letting the map be full width."""
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
 
-    sidebar = (
-        f'<div id="stats-panel" '
-        f'style="position:absolute;left:0;top:0;bottom:0;width:{sidebar_width_px}px;;height:{sidebar_height_px}px;'
-        f'overflow:auto;padding:12px;border-right:1px solid #e5e5e5;'
-        f'background:#fff;z-index:1000;color:#111;font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;">'
+    # Build the stats block
+    stats_panel = (
+        '<div id="stats-panel" class="stats-panel">'
         f'{stats_html}'
-        f'</div>'
+        '</div>'
     )
-        
-    # Insert the sidebar immediately before the first #mynetwork div (match with any attributes/whitespace)
+
+    # Insert before the first #mynetwork div (regardless of extra attributes)
     pattern = r'(<div[^>]*\bid=["\']mynetwork["\'][^>]*>)'
     if re.search(pattern, html, flags=re.IGNORECASE):
-        html = re.sub(pattern, sidebar + r'\1', html, count=1, flags=re.IGNORECASE)
+        html = re.sub(pattern, stats_panel + r'\1', html, count=1, flags=re.IGNORECASE)
     else:
-        # Fallback: if somehow not found, prepend at start of <body>
-        html = html.replace("<body>", "<body>" + sidebar, 1)
-        
-        # Ensure the panel text/link render correctly and the canvas aligns with the panel
+        # Fallback: just drop it at the top of <body>
+        html = html.replace("<body>", "<body>" + stats_panel, 1)
+
+    # Add simple styles for stats panel + pretty <pre> formatting
     style = (
         "<style>"
-        "#stats-panel h2{margin:0 0 10px;font-size:18px;}"
-        "#stats-panel h3{margin:18px 0 8px;font-size:16px;}"
+        "html,body{margin:0;padding:0;}"
+        "#stats-panel{max-width:1200px;margin:20px auto;padding:16px 20px;"
+        "background:#fff;border:1px solid #e0e0e0;border-radius:4px;"
+        "box-shadow:0 1px 3px rgba(0,0,0,0.08);"
+        "font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111;}"
+        "#stats-panel h2{margin:0 0 12px;font-size:18px;}"
+        "#stats-panel h3{margin:20px 0 8px;font-size:16px;}"
         "#stats-panel p{margin:0 0 10px;}"
-        "#stats-panel pre.mono{white-space:pre; font:13px ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; margin:0 0 20px; color:#111;}"
+        "#stats-panel pre.mono{white-space:pre;"
+        "font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;"
+        "margin:0 0 20px;color:#111;}"
         "#stats-panel a{color:#0d6efd;text-decoration:underline;}"
         "</style>"
     )
@@ -120,6 +126,7 @@ HTML_PATH = OUTPUT_DIR / "network_map.html"          # final HTML name (stable)
 # If you keep this True locally, the script opens your browser.
 # On GitHub Actions, this is automatically suppressed.
 OPEN_BROWSER_LOCALLY = True
+DEV_SKIP_SCRAPE = False   # True for local testing
 
 NAME_MAP = {
     # A
@@ -437,12 +444,19 @@ def df_to_pretty_text(series_or_df, column1, column2):
 # ---------- MAIN ----------
 
 def main():
-    tickers = get_tickers('NZE')
-    directorList = scrape_nzx_directors(tickers)
-    if not directorList:
-        raise RuntimeError("No director data scraped; cannot build network.")
+    if DEV_SKIP_SCRAPE and CSV_PATH.exists():
+        print(f"[DEV] Loading directors from existing CSV: {CSV_PATH}")
+        directorDf = pd.read_csv(CSV_PATH, encoding="utf-8")
+    else:
+        print("[FULL] Scraping NZX and rebuilding CSV...")
+        tickers = get_tickers('NZE')
+        directorList = scrape_nzx_directors(tickers)
+        if not directorList:
+            raise RuntimeError("No director data scraped; cannot build network.")
 
-    directorDf = pd.concat(directorList, ignore_index=True)
+        directorDf = pd.concat(directorList, ignore_index=True)
+        directorDf.to_csv(CSV_PATH, encoding="utf-8", index=False)
+        print(f"[FULL] Wrote CSV: {CSV_PATH}")
 
     numPositions = directorDf.shape[0]
     busiestDirectors = directorDf.groupby('Name').count().sort_values('Company', ascending=False).head(5)['Company']
@@ -470,7 +484,7 @@ def main():
     # Build HTML to repo root (graph first, patch, then inject sidebar)
     create_network_html(directorNetwork, HTML_PATH)
 
-    fix_pyvis_output(HTML_PATH, sidebar_width_px=360)
+    fix_pyvis_output(HTML_PATH)
     
     import html
     stats_block = f"""
@@ -479,15 +493,15 @@ def main():
 <p>Unique directors: {numUniqueDirectors}</p>
 <p>Isolated companies: {isolatedCompanies}</p>
 <h3>Busiest directors (by # boards)</h3>
-{busiestHTML}
+<pre class="mono">{busiestHTML}</pre>
 <h3>Directors with most connections</h3>
-{mostConnectedHTML}
+<pre class="mono">{mostConnectedHTML}</pre>
 <p></p>
 <p><a download href="NZX_Directors.csv">Download full CSV</a></p>
 """
 
     # Insert the left sidebar (no BeautifulSoup rewrites of scripts/styles/containers)
-    inject_stats_sidebar(HTML_PATH, stats_block, sidebar_width_px=360, sidebar_height_px=750)
+    inject_stats_above_map(HTML_PATH, stats_block)
 
     print(f"✅ Wrote CSV:  {CSV_PATH}")
     print(f"✅ Wrote HTML: {HTML_PATH}")
