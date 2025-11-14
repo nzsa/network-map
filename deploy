@@ -3,6 +3,7 @@ name: Build & Deploy Network Map
 
 on:
   schedule:
+    - cron: "0 13 * * *"   # 02:00 NZDT (UTC+13)
   workflow_dispatch:
 
 jobs:
