@@ -1,0 +1,30 @@
+name: Daily cron
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+# Default: least privilege
+permissions:
+  contents: read
+
+jobs:
+  main-job:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # your real steps...
+
+  keepalive:
+    runs-on: ubuntu-latest
+    # Optional: run after main-job, but still run even if main-job fails
+    needs: main-job
+    if: ${{ always() }}
+
+    # Only this job gets elevated permission
+    permissions:
+      actions: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gautamkrishnar/keepalive-workflow@v2
